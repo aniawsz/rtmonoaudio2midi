@@ -4,6 +4,16 @@ Real-time note recognition in monophonic audio stream
 
 ## How to use
 
+There are a few dependencies to use the work contained here.
+
+### Linux instructions
+
+Make sure that you have fluidsynth installed, it is required to synthetize midi
+into audio. Also, install some soundfonts: 
+https://wiki.archlinux.org/index.php/Timidity#SoundFonts
+
+
+
 
 
 ## More about this repo
