@@ -1,6 +1,7 @@
 import time
 import itertools
 from collections import deque
+from six.moves import input, range
 
 import numpy as np
 from pyaudio import PyAudio, paContinue, paInt16
@@ -53,7 +54,7 @@ class SpectralAnalyser(object):
         """
         last_spectrum = self._last_spectrum
         flux = sum([max(spectrum[n] - last_spectrum[n], 0)
-            for n in xrange(self._window_size)])
+            for n in range(self._window_size)])
         self._last_flux.append(flux)
 
         thresholded = np.mean(
@@ -142,7 +143,7 @@ class StreamProcessor(object):
         )
         self._stream.start_stream()
 
-        while self._stream.is_active() and not raw_input():
+        while self._stream.is_active() and not input():
             time.sleep(0.1)
 
         self._stream.stop_stream()

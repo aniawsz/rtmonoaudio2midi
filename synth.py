@@ -1,19 +1,17 @@
-import fluidsynth
-import numpy as np
 import time
 
-from app_setup import SAMPLE_RATE
+import fluidsynth
+import numpy as np
+
+from app_setup import SAMPLE_RATE, SOUNDFONT, AUDIO_DRIVER
 
 
 class FluidSynth(object):
-
-    def_synth = "FluidR3_GM2-2.SF2"
-
     def play_note(self, note):
         fs = fluidsynth.Synth()
-        fs.start()
+        fs.start(driver=AUDIO_DRIVER)
 
-        sfid = fs.sfload(self.def_synth)
+        sfid = fs.sfload(SOUNDFONT)
         fs.program_select(0, sfid, 0, 0)
 
         fs.noteon(0, note.value, note.velocity)
@@ -33,7 +31,8 @@ class FluidSynth(object):
         stream = []
         self.fs.noteon(0, note.value, note.velocity)
         # note duration is in sec
-        stream = np.append(stream, self.fs.get_samples(SAMPLE_RATE * note.duration))
+        stream = np.append(stream,
+                           self.fs.get_samples(SAMPLE_RATE * note.duration))
         self.fs.noteoff(0, note.value)
         # 1 sec decay of the note
         stream = np.append(stream, self.fs.get_samples(SAMPLE_RATE * 1))
@@ -45,9 +44,9 @@ class FluidSynth(object):
 
 def test_playing():
     fs = fluidsynth.Synth()
-    fs.start()
+    fs.start(driver=AUDIO_DRIVER)
 
-    sfid = fs.sfload("FluidR3_GM2-2.SF2")
+    sfid = fs.sfload(SOUNDFONT)
     fs.program_select(0, sfid, 0, 0)
 
     fs.noteon(0, 60, 30)
@@ -65,7 +64,7 @@ def test_playing():
 
 def test_returning_data():
     fs = fluidsynth.Synth()
-    sfid = fs.sfload("FluidR3_GM2-2.SF2")
+    sfid = fs.sfload(SOUNDFONT)
     fs.program_select(0, sfid, 0, 0)
 
     fs.noteon(0, 60, 30)
