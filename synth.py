@@ -2,18 +2,20 @@ import fluidsynth
 import numpy as np
 import time
 
-from app_setup import SAMPLE_RATE
+from app_setup import SAMPLE_RATE, SOUNDFONT
 
 
 class FluidSynth(object):
 
-    def_synth = "FluidR3_GM2-2.SF2"
+    def __init__(self, soundfont=None, *a, **k):
+        super(FluidSynth, *a, **k)
+        self._soundfont = soundfont if soundfont is not None else SOUNDFONT
 
     def play_note(self, note):
         fs = fluidsynth.Synth()
         fs.start()
 
-        sfid = fs.sfload(self.def_synth)
+        sfid = fs.sfload(self._soundfont)
         fs.program_select(0, sfid, 0, 0)
 
         fs.noteon(0, note.value, note.velocity)
