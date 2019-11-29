@@ -7,13 +7,15 @@ from pyaudio import PyAudio, paContinue, paInt16
 
 from app_setup import (
     RING_BUFFER_SIZE,
-    SAMPLE_RATE,
     THRESHOLD_MULTIPLIER,
     THRESHOLD_WINDOW_SIZE,
-    WINDOW_SIZE)
+    WINDOW_SIZE,
+    FROM_FILE,
+    SAMPLE_RATE)
 from midi import hz_to_midi, RTNote
 from mingus.midi import fluidsynth
 from app_setup import SOUNDFONT
+import wave
 
 
 class SpectralAnalyser(object):
@@ -21,10 +23,11 @@ class SpectralAnalyser(object):
     # guitar frequency range
     FREQUENCY_RANGE = (80, 1200)
 
-    def __init__(self, window_size, segments_buf=None):
+    def __init__(self, window_size, sample_rate, segments_buf=None):
         self._window_size = window_size
+        self._sample_rate = sample_rate
         if segments_buf is None:
-            segments_buf = int(SAMPLE_RATE / window_size)
+            segments_buf = int(self._sample_rate / window_size)
         self._segments_buf = segments_buf
 
         self._thresholding_window_size = THRESHOLD_WINDOW_SIZE
@@ -70,12 +73,12 @@ class SpectralAnalyser(object):
         # search for maximum between 0.08ms (=1200Hz) and 12.5ms (=80Hz)
         # as it's about the recorder's frequency range of one octave
         min_freq, max_freq = self.FREQUENCY_RANGE
-        start = int(SAMPLE_RATE / max_freq)
-        end = int(SAMPLE_RATE / min_freq)
+        start = int(self._sample_rate / max_freq)
+        end = int(self._sample_rate / min_freq)
         narrowed_cepstrum = cepstrum[start:end]
 
         peak_ix = narrowed_cepstrum.argmax()
-        freq0 = SAMPLE_RATE / (start + peak_ix)
+        freq0 = self._sample_rate / (start + peak_ix)
 
         if freq0 < min_freq or freq0 > max_freq:
             # Ignore the note out of the desired frequency range
@@ -86,31 +89,36 @@ class SpectralAnalyser(object):
     def process_data(self, data):
         spectrum = self.autopower_spectrum(data)
 
-        onset = self.find_onset(spectrum)
-        self._last_spectrum = spectrum
+        if spectrum != None:
+            onset = self.find_onset(spectrum)
+            self._last_spectrum = spectrum
 
-        if self._first_peak:
-            self._first_peak = False
-            return
+            if self._first_peak:
+                self._first_peak = False
+                return
 
-        if onset:
-            freq0 = self.find_fundamental_freq(data)
-            return freq0
+            if onset:
+                freq0 = self.find_fundamental_freq(data)
+                return freq0
+
+        return None
 
     def autopower_spectrum(self, samples):
         """
         Calculates a power spectrum of the given data using the Hamming window.
         """
-        # TODO: check the length of given samples; treat differently if not
+        # TODO: find another way to treat differently if not
         # equal to the window size
-
-        windowed = samples * self._hanning_window
-        # Add 0s to double the length of the data
-        padded = np.append(windowed, self._inner_pad)
-        # Take the Fourier Transform and scale by the number of samples
-        spectrum = np.fft.fft(padded) / self._window_size
-        autopower = np.abs(spectrum * np.conj(spectrum))
-        return autopower[:self._window_size]
+        if (np.size(samples) == self._window_size): 
+            windowed = samples * self._hanning_window
+            # Add 0s to double the length of the data
+            padded = np.append(windowed, self._inner_pad)
+            # Take the Fourier Transform and scale by the number of samples
+            spectrum = np.fft.fft(padded) / self._window_size
+            autopower = np.abs(spectrum * np.conj(spectrum))
+            return autopower[:self._window_size]
+ 
+        return None
 
     def cepstrum(self, samples):
         """
@@ -127,40 +135,64 @@ class StreamProcessor(object):
     FREQS_BUF_SIZE = 11
 
     def __init__(self):
+        self._wf = wave.open('test_data/G53-40100-1111-00001.wav', 'rb')
+        if SAMPLE_RATE: 
+            self._sample_rate = self._wf.getframerate()
+        else: 
+            self._sample_rate = SAMPLE_RATE
         self._spectral_analyser = SpectralAnalyser(
             window_size=WINDOW_SIZE,
+            sample_rate=self._sample_rate,
             segments_buf=RING_BUFFER_SIZE)
         fluidsynth.init(SOUNDFONT)
 
     def run(self):
-        pya = PyAudio()
-        self._stream = pya.open(
-            format=paInt16,
-            channels=1,
-            rate=SAMPLE_RATE,
-            input=True,
-            frames_per_buffer=WINDOW_SIZE,
-            stream_callback=self._process_frame,
-        )
-        self._stream.start_stream()
+        if FROM_FILE:
+            while True:
+                data = self._wf.readframes(WINDOW_SIZE);
+                if not data:
+                    break;
+                self._process_wav_frame(data)
+            self._wf.close()
+        else:
+            pya = PyAudio()
+            self._stream = pya.open(
+                format=paInt16,
+                channels=1,
+                rate=SAMPLE_RATE,
+                input=True,
+                frames_per_buffer=WINDOW_SIZE,
+                stream_callback=self._process_stream_frame,
+            )
+            self._stream.start_stream()
 
-        while self._stream.is_active() and not raw_input():
-            time.sleep(0.1)
+            while self._stream.is_active() and not raw_input():
+                time.sleep(0.1)
 
-        self._stream.stop_stream()
-        self._stream.close()
-        pya.terminate()
+            self._stream.stop_stream()
+            self._stream.close()
+            pya.terminate()
+     
 
-    def _process_frame(self, data, frame_count, time_info, status_flag):
+    def _process_wav_frame(self, frames):
+        data_array = np.frombuffer(frames, dtype=np.int16)
+        self._process_data(data_array)
+
+    def _process_stream_frame(self, data, frame_count, time_info, status_flag):
         data_array = np.fromstring(data, dtype=np.int16)
-        freq0 = self._spectral_analyser.process_data(data_array)
+        self._process_data(data_array)
+        return (data, paContinue)
+
+
+    def _process_data(self, data):
+        freq0 = self._spectral_analyser.process_data(data)
         if freq0:
             # Onset detected
             print("Note detected; fundamental frequency: ", freq0)
             midi_note_value = int(hz_to_midi(freq0)[0])
             print("Midi note value: ", midi_note_value)
-            fluidsynth.play_Note(midi_note_value,0,100)
-        return (data, paContinue)
+            fluidsynth.play_Note(midi_note_value, 0, 100)
+
 
 
 if __name__ == '__main__':
