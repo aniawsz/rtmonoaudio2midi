@@ -11,4 +11,4 @@ RING_BUFFER_SIZE = 40
 FRAMES_PER_BUFFER = 4096
 SAMPLE_RATE = 44100
 
-SOUNDFONT = "FluidR3_GM2-2.SF2"
+SOUNDFONT = "sound_fonts/SpanishClassicalGuitar.sf2"
