@@ -67,7 +67,7 @@ class SpectralAnalyser(object):
 
     def find_fundamental_freq(self, samples):
         cepstrum = self.cepstrum(samples)
-        # search for maximum between 0.08ms (=1200Hz) and 2ms (=500Hz)
+        # search for maximum between 0.08ms (=1200Hz) and 12.5ms (=80Hz)
         # as it's about the recorder's frequency range of one octave
         min_freq, max_freq = self.FREQUENCY_RANGE
         start = int(SAMPLE_RATE / max_freq)
