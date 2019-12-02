@@ -12,12 +12,14 @@ from app_setup import (
     THRESHOLD_WINDOW_SIZE,
     WINDOW_SIZE)
 from midi import hz_to_midi, RTNote
-from synth import FluidSynth
+from mingus.midi import fluidsynth
+from app_setup import SOUNDFONT
 
 
 class SpectralAnalyser(object):
 
-    FREQUENCY_RANGE = (500, 1200)
+    # guitar frequency range
+    FREQUENCY_RANGE = (80, 1200)
 
     def __init__(self, window_size, segments_buf=None):
         self._window_size = window_size
@@ -128,7 +130,7 @@ class StreamProcessor(object):
         self._spectral_analyser = SpectralAnalyser(
             window_size=WINDOW_SIZE,
             segments_buf=RING_BUFFER_SIZE)
-        self._synth = FluidSynth()
+        fluidsynth.init(SOUNDFONT)
 
     def run(self):
         pya = PyAudio()
@@ -157,8 +159,7 @@ class StreamProcessor(object):
             print("Note detected; fundamental frequency: ", freq0)
             midi_note_value = int(hz_to_midi(freq0)[0])
             print("Midi note value: ", midi_note_value)
-            note = RTNote(midi_note_value, 100, 0.5)
-            self._synth.play_note(note)
+            fluidsynth.play_Note(midi_note_value,0,100)
         return (data, paContinue)
 
 

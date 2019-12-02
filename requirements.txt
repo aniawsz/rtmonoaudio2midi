@@ -2,4 +2,4 @@ future==0.17.1
 mido==1.2.9
 numpy==1.15.4
 PyAudio==0.2.11
-pyFluidSynth==1.2.4
+mingus==0.5.1
