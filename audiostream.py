@@ -53,7 +53,7 @@ class SpectralAnalyser(object):
         """
         last_spectrum = self._last_spectrum
         flux = sum([max(spectrum[n] - last_spectrum[n], 0)
-            for n in xrange(self._window_size)])
+            for n in range(self._window_size)])
         self._last_flux.append(flux)
 
         thresholded = np.mean(
@@ -142,7 +142,7 @@ class StreamProcessor(object):
         )
         self._stream.start_stream()
 
-        while self._stream.is_active() and not raw_input():
+        while self._stream.is_active() and not input():
             time.sleep(0.1)
 
         self._stream.stop_stream()
@@ -150,7 +150,7 @@ class StreamProcessor(object):
         pya.terminate()
 
     def _process_frame(self, data, frame_count, time_info, status_flag):
-        data_array = np.fromstring(data, dtype=np.int16)
+        data_array = np.frombuffer(data, dtype=np.int16)
         freq0 = self._spectral_analyser.process_data(data_array)
         if freq0:
             # Onset detected
